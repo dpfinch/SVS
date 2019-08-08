@@ -281,7 +281,11 @@ if __name__ == '__main__':
     # Testers
     print('Running example')
 
-    
+    # Set the met file path. Currently has 4 placeholders (%s) for other information added later.
+    # For using as an example I suggest just changing the directories to your local ones and either
+    # using the same date as below or changing it to the date of the example file you have.
+    # Example met file can be downloaded here:
+    # https://g5nr.nccs.nasa.gov/data/DATA/0.0625_deg/inst/inst30mn_2d_met1_Nx/Y2006/M04/D03/c1440_NR.inst30mn_2d_met1_Nx.20060403_1200z.nc4
     Met_file_path = '/Users/dfinch/Documents/NASA_Nature/c1440_NR.inst30mn_%s_%s_%s.20060403_%sz.nc4'
     
     ## Lat, lon and altitude (in km) of ground station (currently set to Edinburgh)
