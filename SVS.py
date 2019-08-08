@@ -287,8 +287,9 @@ if __name__ == '__main__':
     ## Calculate the height of each model layer above the given ground station
     hgt_layers = GetModelLayerHeights(grnd, Met_file_path)
 
-    
+    ## Returns lat and lon of the entry point for each layer
     layer_df = ModelLayerCoordList(grnd,az,el,hgt_layers)
+    ## Converts lat and lon into grid coordinates and finds the cells intersected for each layer   
     index_df = FindIntersects(layer_df)
     
     
