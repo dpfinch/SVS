@@ -87,6 +87,10 @@ def GetCoordValue(Coord, lat_or_lon = 'lat'):
 
 def GetObserverView(GrndStn, Satellite):
     '''
+        This returns the azimuth angle and the elevation angle of a satellite for a given ground
+        station. This calculation is copied from pyorbital module but with ammendments to
+        work for this piece of code. This function still calls a function within pyorbital for
+        some of the calculations.
     '''
     utc_time = np.datetime64(Satellite.time)
     
@@ -157,6 +161,9 @@ class GroundStation:
         self.lat = lat
         self.lon = lon
         self.alt = altitude
+
+        ## Get a two degree box around the ground station as this will be as far as the line of sight
+        ## from a satellite will reach from the ground station.
         
         self.lat_min_index = GetCoordValue(lat - 2, lat_or_lon = 'lat')
         self.lat_max_index = GetCoordValue(lat + 2, lat_or_lon = 'lat')
@@ -168,6 +175,9 @@ class GroundStation:
         self.lon_index = GetCoordValue(lon, lat_or_lon = 'lon')
 
 class SatelliteOrbit:
+    '''
+        Set the satellite parameters
+    '''
 
     def __init__(self, lat, lon, altitude, time):
         self.lat = lat
@@ -291,7 +301,8 @@ if __name__ == '__main__':
     layer_df = ModelLayerCoordList(grnd,az,el,hgt_layers)
     ## Converts lat and lon into grid coordinates and finds the cells intersected for each layer   
     index_df = FindIntersects(layer_df)
-    
+
+    print(index_df)
     
 ### ============================================================================
 ### END OF PROGRAM
