@@ -1,4 +1,4 @@
-# SatLOS
+# SVS (Incomplete README)
 
 SVS (Satellite Visibility Simulator) is based on high temporal and spatial resolution modelled atmospheric data. This can be used to determine transmission statistics between a given ground station and flight path of a satellite.
 
