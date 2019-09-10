@@ -8,13 +8,14 @@ import numpy as np
 from datetime import datetime
 import pandas as pd
 from pyorbital import astronomy
+from pyorbital.orbital import Orbital
 import geopy
 from geopy.distance import distance as geodist
 from skimage.draw import line
 ### ============================================================================
 '''
 1) Calculate model layer thickness and model height
-2) Calculate elevation and azimuth angle of the satellite from ground station
+2) Open viewing elevation angle and azimuth file
 3) Find where the line of sight hits the top of the model grid
 4) Do 3D trig to dtermine distance travelled in one model layer north and east
 5) Transfer this distance to grid cells to get coord for next layer
@@ -85,48 +86,6 @@ def GetCoordValue(Coord, lat_or_lon = 'lat'):
     value = min(range(len(Coord_Range)), key=lambda i: abs(Coord_Range[i]-Coord))
     return value
 
-def GetObserverView(GrndStn, Satellite):
-    '''
-        This returns the azimuth angle and the elevation angle of a satellite for a given ground
-        station. This calculation is copied from pyorbital module but with ammendments to
-        work for this piece of code. This function still calls a function within pyorbital for
-        some of the calculations.
-    '''
-    utc_time = np.datetime64(Satellite.time)
-    
-    (pos_x,pos_y,pos_z), (vel_x, vel_y, vel_z_) = astronomy.observer_position(
-            utc_time, Satellite.lon, Satellite.lat, Satellite.alt)
-                          
-    (opos_x, opos_y, opos_z), (ovel_x, ovel_y, ovelz) = astronomy.observer_position(
-            utc_time, GrndStn.lon, GrndStn.lat, GrndStn.alt)
-
-    lon = np.deg2rad(GrndStn.lon)
-    lat = np.deg2rad(GrndStn.lat)
-
-    theta = (astronomy.gmst(utc_time) + lon) % (2 * np.pi)
-
-    rx = pos_x - opos_x
-    ry = pos_y - opos_y
-    rz = pos_z - opos_z
-
-    sin_lat = np.sin(lat)
-    cos_lat = np.cos(lat)
-    sin_theta = np.sin(theta)
-    cos_theta = np.cos(theta)
-
-    top_s = sin_lat * cos_theta * rx + sin_lat * sin_theta * ry - cos_lat * rz
-    top_e = -sin_theta * rx + cos_theta * ry
-    top_z = cos_lat * cos_theta * rx + cos_lat * sin_theta * ry + sin_lat * rz
-
-    az = np.arctan(-top_e/top_s)
-    az = np.where(top_s > 0, az + np.pi, az)
-    az = np.where(az < 0, az + 2 * np.pi, az)
-
-    rg = np.sqrt(rx * rx + ry * ry + rz * rz)
-    el = np.arcsin(top_z / rg)
-
-    # Return azimuth angle and elevation angle
-    return np.rad2deg(az), np.rad2deg(el)
 
 def LatitudeChange(distance):
     '''
@@ -147,7 +106,7 @@ def LongitudeChange(distance, latitude):
     return np.rad2deg(distance/r)
     
 ### ============================================================================
-### Ground station and satellite objects
+### Ground station objects
 ### ============================================================================
 
 class GroundStation:
@@ -174,49 +133,34 @@ class GroundStation:
         self.lat_index = GetCoordValue(lat, lat_or_lon = 'lat')
         self.lon_index = GetCoordValue(lon, lat_or_lon = 'lon')
 
-class SatelliteOrbit:
-    '''
-        Set the satellite parameters
-    '''
 
-    def __init__(self, lat, lon, altitude, time):
-        self.lat = lat
-        self.lon = lon
-        self.alt = altitude
-        self.time = time
-
-
-def ImportData(met_file,variable,timestamp = None):
-    # Just using example file for now
+def ImportData(G5NR_file_path,variable,timestamp):
     
-    if not timestamp:
-        if variable == 'met1':
-            dim = '2d'
-            suffix = 'Nx'
-            time = '1200'
-        else:
-            suffix = 'Nv'
-            dim = '3d'
+    rounded_dt = RoundTime(timestamp)
 
-        if variable == 'DELP':
-            time = '1230'
-        elif variable in ['PL','T']:
-            time = '1300'
+    file_date = rounded_dt.strftime('%Y%m%d_%H%Mz')
+    
+    year = str(rounded_dt.year)
+    month = str(rounded_dt.month).zfill(2)
+    day = str(rounded_dt.day).zfill(2)
 
-    dataset = Dataset(met_file % (dim, variable, suffix, time), 'r')
+    full_file_name = '{}/Y{}/M{}/D{}/c1440_NR.inst30mn_3d_{}_Nv.{}.nc4'.format(
+                    G5NR_file_path,year,month,day,variable, file_date)
+    
+    dataset = Dataset(filename, 'r')
     
     return dataset    
 
-def GetModelLayerHeights(GrndStn,met_file):
+def GetModelLayerHeights(GrndStn,met_file, timestamp):
     '''
         Returns the height of each layer above the previous based on pressure and temperature
         First layer is zero since its zero height above the surface. Needed for subsequent calculations
     '''
 
-    pres = ImportData(met_file, 'DELP')
+    pres = ImportData(met_file, 'DELP',timestamp)
     delp = pres.variables['DELP'][0,:,GrndStn.lat_min_index:GrndStn.lat_max_index,GrndStn.lon_min_index:GrndStn.lon_max_index]
     
-    temp = ImportData(met_file,'T')
+    temp = ImportData(met_file,'T',timestamp)
     t = temp.variables['T'][0,:,GrndStn.lat_min_index:GrndStn.lat_max_index,GrndStn.lon_min_index:GrndStn.lon_max_index]
 
     layer_heights = np.zeros(t.shape)
@@ -277,6 +221,17 @@ def FindIntersects(layer_df):
 
     return modelindex
 
+def RoundTime(dt=None, roundTo= 30*60):
+   """Round a datetime object to any time lapse in seconds
+   dt : datetime.datetime object, default now.
+   roundTo : Closest number of seconds to round to, default 30 minutes.
+   Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+   """
+   if dt == None : dt = datetime.now()
+   seconds = (dt.replace(tzinfo=None) - dt.min).seconds
+   rounding = (seconds+roundTo/2) // roundTo * roundTo
+   return dt + timedelta(0,rounding-seconds,-dt.microsecond)
+
 if __name__ == '__main__':
     # Testers
     print('Running example')
@@ -287,16 +242,6 @@ if __name__ == '__main__':
     # Example met file can be downloaded here:
     # https://g5nr.nccs.nasa.gov/data/DATA/0.0625_deg/inst/inst30mn_2d_met1_Nx/Y2006/M04/D03/c1440_NR.inst30mn_2d_met1_Nx.20060403_1200z.nc4
     Met_file_path = '/Users/dfinch/Documents/NASA_Nature/c1440_NR.inst30mn_%s_%s_%s.20060403_%sz.nc4'
-    
-    ## Lat, lon and altitude (in km) of ground station (currently set to Edinburgh)
-    grnd = GroundStation(56,1,0.04)
-
-    ## Lat, lon, alt & time of satellite (fairly random position chosen)
-    ## For this example time does not make any difference so just set to current time
-    satellite = SatelliteOrbit(54,3,400, datetime.now())
-
-    ## Return the azimuth and elevation angle of the satellite from the point of the view of the ground station
-    az,el = GetObserverView(grnd,satellite)
 
     ## Calculate the height of each model layer above the given ground station
     hgt_layers = GetModelLayerHeights(grnd, Met_file_path)
