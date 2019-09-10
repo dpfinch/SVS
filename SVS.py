@@ -144,23 +144,23 @@ def ImportData(G5NR_file_path,variable,timestamp):
     month = str(rounded_dt.month).zfill(2)
     day = str(rounded_dt.day).zfill(2)
 
-    full_file_name = '{}/Y{}/M{}/D{}/c1440_NR.inst30mn_3d_{}_Nv.{}.nc4'.format(
-                    G5NR_file_path,year,month,day,variable, file_date)
+    full_file_name = '{}/inst30mn_3d_{}_Nv/Y{}/M{}/D{}/c1440_NR.inst30mn_3d_{}_Nv.{}.nc4'.format(
+                    G5NR_file_path,variable, year,month,day,variable, file_date)
     
     dataset = Dataset(filename, 'r')
     
     return dataset    
 
-def GetModelLayerHeights(GrndStn,met_file, timestamp):
+def GetModelLayerHeights(GrndStn,G5NR_file_path, timestamp):
     '''
         Returns the height of each layer above the previous based on pressure and temperature
         First layer is zero since its zero height above the surface. Needed for subsequent calculations
     '''
 
-    pres = ImportData(met_file, 'DELP',timestamp)
+    pres = ImportData(G5NR_file_path, 'DELP',timestamp)
     delp = pres.variables['DELP'][0,:,GrndStn.lat_min_index:GrndStn.lat_max_index,GrndStn.lon_min_index:GrndStn.lon_max_index]
     
-    temp = ImportData(met_file,'T',timestamp)
+    temp = ImportData(G5NR_file_path,'T',timestamp)
     t = temp.variables['T'][0,:,GrndStn.lat_min_index:GrndStn.lat_max_index,GrndStn.lon_min_index:GrndStn.lon_max_index]
 
     layer_heights = np.zeros(t.shape)
