@@ -10,6 +10,8 @@ import netCDF4 as nc4
 def run_sps(G5NR_file_path):
 
     sat_az_el_file = '/Users/dfinch/Documents/svs_20190904_171119.csv'
+    print('Extracting azimuth and elevation angles from {}'.format(sat_az_el_file))
+    print(' ')
 
     ogs_coords = {}
     with open(sat_az_el_file, 'r') as txt_file:
@@ -23,14 +25,15 @@ def run_sps(G5NR_file_path):
 
     
     grnd_stn = SVS.GroundStation(latitude,longitude, altitude)
-    hgt_layers = SVS.GetModelLayerHeights(grnd_stn, G5NR_file_path, timestamp)
     
     overpasses = pd.read_csv(sat_az_el_file, skiprows = 5, index_col = 'Time',
                              parse_dates = True, skipinitialspace = True)
 
-    
     pass_LOS = {}
+    print('Calculating line of sight intersects...')
+    print(' ')
     for index, row in overpasses.iterrows():
+        hgt_layers = SVS.GetModelLayerHeights(grnd_stn, G5NR_file_path, row.name.to_pydatetime())
         layer_df = SVS.ModelLayerCoordList(grnd_stn,row.Azimuth,row.Elevation,hgt_layers)
         pass_LOS[index] = SVS.FindIntersects(layer_df)
     return pass_LOS
@@ -66,10 +69,12 @@ def Extract_G5NR_Data(index_dict,G5NR_file_path):
     'BCPHILIC','BCPHOBIC','DU001','DU002','DU003','DU004','DU005','OCPHILIC',
     'OCPHOBIC','QI','QL','QR','QS','QV','SS001','SS002','SS003','SS004',
     'SS005']
+    # Only use following variables since they're the only ones on the harddrive currently
     atmos_vars = ['QL','QI','QV', 'BCPHILIC']
 
     all_vars_df = []
-    for variable in atmos_vars:        
+    for variable in atmos_vars:
+        print('Extracting data for {}.'.format(variable))
         datetime_holder = None
 
         overpass_time = []
@@ -95,7 +100,7 @@ def Extract_G5NR_Data(index_dict,G5NR_file_path):
     data_df = pd.concat(all_vars_df, axis = 1)
     return data_df
 
-def Plot_Paths(index_dict),G5NR_file_path:
+def Plot_Paths(index_dict,G5NR_file_path):
     from matplotlib import pyplot as plt
     from mpl_toolkits import mplot3d
     import numpy as np
@@ -125,6 +130,8 @@ if __name__ == '__main__':
     G5NR_file_path = '/Volumes/DougsDrive/'
     LOS = run_sps(G5NR_file_path)
     model_data = Extract_G5NR_Data(LOS,G5NR_file_path)
+    print('OUTPUT:')
+    print(model_data)
 
 ### ============================================================================
 ### END OF PROGRAM

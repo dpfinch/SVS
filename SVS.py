@@ -5,7 +5,7 @@
 from netCDF4 import Dataset
 import math
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from pyorbital import astronomy
 from pyorbital.orbital import Orbital
@@ -147,7 +147,7 @@ def ImportData(G5NR_file_path,variable,timestamp):
     full_file_name = '{}/inst30mn_3d_{}_Nv/Y{}/M{}/D{}/c1440_NR.inst30mn_3d_{}_Nv.{}.nc4'.format(
                     G5NR_file_path,variable, year,month,day,variable, file_date)
     
-    dataset = Dataset(filename, 'r')
+    dataset = Dataset(full_file_name, 'r')
     
     return dataset    
 
